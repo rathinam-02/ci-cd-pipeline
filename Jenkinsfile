@@ -23,18 +23,16 @@ pipeline {
 
        stage('SonarQube Analysis') {
     steps {
-        script {
-            def scannerHome = tool 'SonarScanner'
-            withSonarQubeEnv('sonarqube') {
-                sh """
-                    cd app
-                    ${scannerHome}/bin/sonar-scanner \
-                    -Dsonar.projectKey=springboot-demo \
-                    -Dsonar.projectName=springboot-demo \
-                    -Dsonar.sources=src \
-                    -Dsonar.java.binaries=target/classes
-                """
-            }
+        withSonarQubeEnv('sonarqube') {
+            sh '''
+                cd app
+
+                /opt/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
+                  -Dsonar.projectKey=springboot-demo \
+                  -Dsonar.projectName=springboot-demo \
+                  -Dsonar.sources=src \
+                  -Dsonar.java.binaries=target/classes
+            '''
         }
     }
 }
