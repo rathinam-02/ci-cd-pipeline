@@ -17,7 +17,10 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'cd app && mvn clean package'
+                sh '''
+                    cd app
+                    mvn clean package
+                '''
             }
         }
 
@@ -42,6 +45,49 @@ pipeline {
                     waitForQualityGate abortPipeline: true
                 }
             }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh '''
+                    cd app
+                    docker build -t rathinam02/springboot-demo:${BUILD_NUMBER} .
+                    docker tag rathinam02/springboot-demo:${BUILD_NUMBER} rathinam02/springboot-demo:latest
+                '''
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'USER',
+                        passwordVariable: 'PASS'
+                    )
+                ]) {
+                    sh '''
+                        echo "$PASS" | docker login -u "$USER" --password-stdin
+                        docker push rathinam02/springboot-demo:${BUILD_NUMBER}
+                        docker push rathinam02/springboot-demo:latest
+                        docker logout
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully.'
+        }
+
+        failure {
+            echo 'Pipeline failed.'
+        }
+
+        always {
+            cleanWs()
         }
     }
 }
