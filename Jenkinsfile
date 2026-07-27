@@ -6,6 +6,10 @@ pipeline {
         maven 'Maven3'
     }
 
+    environment {
+        IMAGE_NAME = "rathinamaanikam/springboot-demo"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -29,6 +33,7 @@ pipeline {
                 withSonarQubeEnv('sonarqube') {
                     sh '''
                         cd app
+
                         /opt/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
                         -Dsonar.projectKey=springboot-demo \
                         -Dsonar.projectName=springboot-demo \
@@ -51,35 +56,45 @@ pipeline {
             steps {
                 sh '''
                     cd app
-                    docker build -t rathinam02/springboot-demo:${BUILD_NUMBER} .
-                    docker tag rathinam02/springboot-demo:${BUILD_NUMBER} rathinam02/springboot-demo:latest
+
+                    docker build \
+                    -t ${IMAGE_NAME}:${BUILD_NUMBER} \
+                    -t ${IMAGE_NAME}:latest .
                 '''
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login \
+                        -u "$DOCKER_USER" \
+                        --password-stdin
+                    '''
+                }
             }
         }
 
         stage('Docker Push') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub',
-                        usernameVariable: 'USER',
-                        passwordVariable: 'PASS'
-                    )
-                ]) {
-                    sh '''
-                        echo "$PASS" | docker login -u "$USER" --password-stdin
-                        docker push rathinam02/springboot-demo:${BUILD_NUMBER}
-                        docker push rathinam02/springboot-demo:latest
-                        docker logout
-                    '''
-                }
+                sh '''
+                    docker push ${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker push ${IMAGE_NAME}:latest
+                '''
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline completed successfully.'
+            echo 'Pipeline completed successfully!'
         }
 
         failure {
