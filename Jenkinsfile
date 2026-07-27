@@ -1,4 +1,5 @@
 pipeline {
+
     agent any
 
     tools {
@@ -19,6 +20,7 @@ pipeline {
             }
         }
 
+
         stage('Build') {
             steps {
                 sh '''
@@ -28,9 +30,11 @@ pipeline {
             }
         }
 
+
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonarqube') {
+
                     sh '''
                         cd app
 
@@ -44,28 +48,41 @@ pipeline {
             }
         }
 
+
         stage('Quality Gate') {
+
             steps {
+
                 timeout(time: 5, unit: 'MINUTES') {
+
                     waitForQualityGate abortPipeline: true
+
                 }
             }
         }
 
+
         stage('Docker Build') {
+
             steps {
+
                 sh '''
+
                     cd app
 
                     docker build \
                     -t ${IMAGE_NAME}:${BUILD_NUMBER} \
                     -t ${IMAGE_NAME}:latest .
+
                 '''
             }
         }
 
-        stage('Docker Login') {
+
+        stage('Docker Push') {
+
             steps {
+
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'dockerhub',
@@ -73,36 +90,52 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
+
                     sh '''
-                        echo "$DOCKER_PASS" | docker login \
-                        -u "$DOCKER_USER" \
-                        --password-stdin
+
+                    echo "$DOCKER_PASS" | docker login \
+                    -u "$DOCKER_USER" \
+                    --password-stdin
+
+
+                    docker push ${IMAGE_NAME}:${BUILD_NUMBER}
+
+                    docker push ${IMAGE_NAME}:latest
+
+
+                    docker logout
+
                     '''
                 }
             }
         }
 
-        stage('Docker Push') {
-            steps {
-                sh '''
-                    docker push ${IMAGE_NAME}:${BUILD_NUMBER}
-                    docker push ${IMAGE_NAME}:latest
-                '''
-            }
-        }
+
     }
+
 
     post {
+
         success {
-            echo 'Pipeline completed successfully!'
+
+            echo 'CI Pipeline completed successfully!'
+
         }
+
 
         failure {
-            echo 'Pipeline failed.'
+
+            echo 'CI Pipeline failed!'
+
         }
 
+
         always {
+
             cleanWs()
+
         }
+
     }
+
 }
